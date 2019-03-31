@@ -23,6 +23,12 @@ option(FLATBUFFERS_LIBCXX_WITH_CLANG "Force libc++ when using Clang" ON)
 option(FLATBUFFERS_CODE_SANITIZE
       "Add '-fsanitize' flags to 'flattests' and 'flatc' targets."
       OFF)
+option(FLATBUFFERS_PACKAGE_REDHAT
+       "Build an rpm using the 'package' target."
+       OFF)
+option(FLATBUFFERS_PACKAGE_DEBIAN
+       "Build an deb using the 'package' target."
+       OFF)
 
 if(NOT FLATBUFFERS_BUILD_FLATC AND FLATBUFFERS_BUILD_TESTS)
     message(WARNING
@@ -187,7 +193,7 @@ elseif(${CMAKE_CXX_COMPILER_ID} MATCHES "Clang")
       "${CMAKE_CXX_FLAGS} -std=c++0x -Wall -pedantic -Werror -Wextra -Wno-unused-parameter")
   set(FLATBUFFERS_PRIVATE_CXX_FLAGS "-Wold-style-cast")
   if(NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 3.8)
-    list(APPEND FLATBUFFERS_PRIVATE_CXX_FLAGS "-Wimplicit-fallthrough" "-Werror=unused-private-field") # enable warning
+    list(APPEND FLATBUFFERS_PRIVATE_CXX_FLAGS "-Wimplicit-fallthrough" "-Wextra-semi" "-Werror=unused-private-field") # enable warning
   endif()
   if(FLATBUFFERS_LIBCXX_WITH_CLANG)
     if(NOT "${CMAKE_SYSTEM_NAME}" MATCHES "Linux")
@@ -443,6 +449,13 @@ endif()
 
 include(CMake/BuildFlatBuffers.cmake)
 
-if(FLATBUFFERS_PACKAGE_DEBIAN)
-    include(CMake/PackageDebian.cmake)
+if(UNIX)
+    # Use of CPack only supported on Linux systems.
+    if(FLATBUFFERS_PACKAGE_DEBIAN)
+        include(CMake/PackageDebian.cmake)
+    endif()
+    if (FLATBUFFERS_PACKAGE_REDHAT)
+        include(CMake/PackageRedhat.cmake)
+    endif()
+    include(CPack)
 endif()

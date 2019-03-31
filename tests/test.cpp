@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright 2014 Google Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -1240,7 +1240,7 @@ void TestError_(const char *src, const char *error_substr, const char *file,
   TestError_(src, error_substr, false, file, line, func);
 }
 
-#ifdef WIN32
+#ifdef _WIN32
 #  define TestError(src, ...) \
     TestError_(src, __VA_ARGS__, __FILE__, __LINE__, __FUNCTION__)
 #else
@@ -1996,18 +1996,41 @@ void ParseUnionTest() {
           true);
 }
 
-void UnionVectorTest() {
-  // load FlatBuffer fbs schema.
-  // TODO: load a JSON file with such a vector when JSON support is ready.
+void InvalidNestedFlatbufferTest() {
+  // First, load and parse FlatBuffer schema (.fbs)
   std::string schemafile;
+  TEST_EQ(flatbuffers::LoadFile((test_data_path + "monster_test.fbs").c_str(),
+                                false, &schemafile),
+          true);
+  auto include_test_path =
+      flatbuffers::ConCatPathFileName(test_data_path, "include_test");
+  const char *include_directories[] = { test_data_path.c_str(),
+                                        include_test_path.c_str(), nullptr };
+  flatbuffers::Parser parser1;
+  TEST_EQ(parser1.Parse(schemafile.c_str(), include_directories), true);
+
+  // "color" inside nested flatbuffer contains invalid enum value
+  TEST_EQ(parser1.Parse("{ name: \"Bender\", testnestedflatbuffer: { name: "
+                        "\"Leela\", color: \"nonexistent\"}}"),
+          false);
+  // Check that Parser is destroyed correctly after parsing invalid json
+}
+
+void UnionVectorTest() {
+  // load FlatBuffer fbs schema and json.
+  std::string schemafile, jsonfile;
   TEST_EQ(flatbuffers::LoadFile(
-              (test_data_path + "union_vector/union_vector.fbs").c_str(), false,
-              &schemafile),
+              (test_data_path + "union_vector/union_vector.fbs").c_str(),
+              false, &schemafile),
+          true);
+  TEST_EQ(flatbuffers::LoadFile(
+              (test_data_path + "union_vector/union_vector.json").c_str(),
+              false, &jsonfile),
           true);
 
   // parse schema.
   flatbuffers::IDLOptions idl_opts;
-  idl_opts.lang_to_generate |= flatbuffers::IDLOptions::kCpp;
+  idl_opts.lang_to_generate |= flatbuffers::IDLOptions::kBinary;
   flatbuffers::Parser parser(idl_opts);
   TEST_EQ(parser.Parse(schemafile.c_str()), true);
 
@@ -2073,6 +2096,13 @@ void UnionVectorTest() {
 
   TestMovie(flat_movie);
 
+  // Also test the JSON we loaded above.
+  TEST_EQ(parser.Parse(jsonfile.c_str()), true);
+  auto jbuf = parser.builder_.GetBufferPointer();
+  flatbuffers::Verifier jverifier(jbuf, parser.builder_.GetSize());
+  TEST_EQ(VerifyMovieBuffer(jverifier), true);
+  TestMovie(GetMovie(jbuf));
+
   auto movie_object = flat_movie->UnPack();
   TEST_EQ(movie_object->main_character.AsRapunzel()->hair_length(), 6);
   TEST_EQ(movie_object->characters[0].AsBelle()->books_read(), 7);
@@ -2130,6 +2160,13 @@ void UnionVectorTest() {
       "    \"Unused\"\n"
       "  ]\n"
       "}");
+
+  flatbuffers::Parser parser2(idl_opts);
+  TEST_EQ(parser2.Parse("struct Bool { b:bool; }"
+                        "union Any { Bool }"
+                        "table Root { a:Any; }"
+                        "root_type Root;"), true);
+  TEST_EQ(parser2.Parse("{a_type:Bool,a:{b:true}}"), true);
 }
 
 void ConformTest() {
@@ -2386,19 +2423,25 @@ void EqualOperatorTest() {
   MonsterT a;
   MonsterT b;
   TEST_EQ(b == a, true);
+  TEST_EQ(b != a, false);
 
   b.mana = 33;
   TEST_EQ(b == a, false);
+  TEST_EQ(b != a, true);
   b.mana = 150;
   TEST_EQ(b == a, true);
+  TEST_EQ(b != a, false);
 
   b.inventory.push_back(3);
   TEST_EQ(b == a, false);
+  TEST_EQ(b != a, true);
   b.inventory.clear();
   TEST_EQ(b == a, true);
+  TEST_EQ(b != a, false);
 
   b.test.type = Any_Monster;
   TEST_EQ(b == a, false);
+  TEST_EQ(b != a, true);
 }
 
 // For testing any binaries, e.g. from fuzzing.
@@ -2524,6 +2567,7 @@ int FlatBufferTests() {
   InvalidUTF8Test();
   UnknownFieldsTest();
   ParseUnionTest();
+  InvalidNestedFlatbufferTest();
   ConformTest();
   ParseProtoBufAsciiTest();
   TypeAliasesTest();
