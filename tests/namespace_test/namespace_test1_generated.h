@@ -35,7 +35,7 @@ inline const EnumInNestedNS (&EnumValuesEnumInNestedNS())[3] {
 }
 
 inline const char * const *EnumNamesEnumInNestedNS() {
-  static const char * const names[] = {
+  static const char * const names[4] = {
     "A",
     "B",
     "C",
@@ -56,6 +56,9 @@ FLATBUFFERS_MANUALLY_ALIGNED_STRUCT(4) StructInNestedNS FLATBUFFERS_FINAL_CLASS 
   int32_t b_;
 
  public:
+  static const flatbuffers::TypeTable *MiniReflectTypeTable() {
+    return StructInNestedNSTypeTable();
+  }
   StructInNestedNS() {
     memset(static_cast<void *>(this), 0, sizeof(StructInNestedNS));
   }

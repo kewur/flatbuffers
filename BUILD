@@ -96,6 +96,7 @@ cc_binary(
         "src/idl_gen_python.cpp",
         "src/idl_gen_rust.cpp",
         "src/idl_gen_text.cpp",
+        "src/util.cpp",
     ],
     includes = [
         "grpc/",
@@ -153,6 +154,7 @@ cc_test(
         ":tests/monster_test.bfbs",
         ":tests/monster_test.fbs",
         ":tests/monsterdata_test.golden",
+        ":tests/monsterdata_test.json",
         ":tests/prototest/imported.proto",
         ":tests/prototest/test.golden",
         ":tests/prototest/test.proto",
@@ -160,6 +162,8 @@ cc_test(
         ":tests/unicode_test.json",
         ":tests/union_vector/union_vector.fbs",
         ":tests/union_vector/union_vector.json",
+        ":tests/monster_extra.fbs",
+        ":tests/monsterdata_extra.json",
     ],
     includes = ["include/"],
     deps = [
